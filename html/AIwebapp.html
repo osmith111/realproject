@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minesweeper</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f3f3f3;
+        }
+        #game-board {
+            display: grid;
+            gap: 2px;
+            background-color: #333;
+            padding: 2px;
+            grid-template-rows: repeat(10, 1fr);
+            grid-template-columns: repeat(10, 1fr);
+        }
+        .cell {
+            width: 30px;
+            height: 30px;
+            background-color: #ccc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .cell.revealed {
+            background-color: #eee;
+            cursor: default;
+        }
+        .cell.mine {
+            background-color: red;
+        }
+        .cell.flag {
+            background-color: #ffc107;
+        }
+        #restart-btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        #restart-btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-board"></div>
+    <button id="restart-btn">Restart Game</button> <br>
+    <a href="../index.html">Resume</a> ·
+    <a href="scratchpage.html">Scratch Page</a>
+
+
+    <script>
+        const rows = 10;
+        const cols = 10;
+        const mineCount = 15;
+        let gameOver = false;
+
+        const board = document.getElementById('game-board');
+        const restartBtn = document.getElementById('restart-btn');
+
+        const createBoard = () => {
+            const cells = [];
+            for (let i = 0; i < rows; i++) {
+                const row = [];
+                for (let j = 0; j < cols; j++) {
+                    row.push({ mine: false, revealed: false, flagged: false, adjacentMines: 0 });
+                }
+                cells.push(row);
+            }
+            return cells;
+        };
+
+        const placeMines = (cells) => {
+            let placedMines = 0;
+            while (placedMines < mineCount) {
+                const row = Math.floor(Math.random() * rows);
+                const col = Math.floor(Math.random() * cols);
+                if (!cells[row][col].mine) {
+                    cells[row][col].mine = true;
+                    placedMines++;
+                }
+            }
+        };
+
+        const calculateAdjacency = (cells) => {
+            const directions = [
+                [-1, -1], [-1, 0], [-1, 1],
+                [0, -1],           [0, 1],
+                [1, -1], [1, 0], [1, 1]
+            ];
+
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    if (cells[i][j].mine) continue;
+                    directions.forEach(([dx, dy]) => {
+                        const ni = i + dx;
+                        const nj = j + dy;
+                        if (ni >= 0 && ni < rows && nj >= 0 && nj < cols && cells[ni][nj].mine) {
+                            cells[i][j].adjacentMines++;
+                        }
+                    });
+                }
+            }
+        };
+
+        const revealCell = (cell, i, j, cells) => {
+            if (gameOver || cell.revealed || cell.flagged) return;
+            cell.revealed = true;
+            const cellDiv = document.getElementById(`cell-${i}-${j}`);
+            cellDiv.classList.add('revealed');
+
+            if (cell.mine) {
+                cellDiv.classList.add('mine');
+                cellDiv.textContent = '💣';
+                alert('Game Over!');
+                gameOver = true;
+                return;
+            }
+
+            if (cell.adjacentMines > 0) {
+                cellDiv.textContent = cell.adjacentMines;
+            } else {
+                const directions = [
+                    [-1, -1], [-1, 0], [-1, 1],
+                    [0, -1],           [0, 1],
+                    [1, -1], [1, 0], [1, 1]
+                ];
+                directions.forEach(([dx, dy]) => {
+                    const ni = i + dx;
+                    const nj = j + dy;
+                    if (ni >= 0 && ni < rows && nj >= 0 && nj < cols) {
+                        revealCell(cells[ni][nj], ni, nj, cells);
+                    }
+                });
+            }
+        };
+
+        const toggleFlag = (event, cell, i, j) => {
+            event.preventDefault();
+            if (gameOver || cell.revealed) return;
+            cell.flagged = !cell.flagged;
+            const cellDiv = document.getElementById(`cell-${i}-${j}`);
+            if (cell.flagged) {
+                cellDiv.classList.add('flag');
+                cellDiv.textContent = '🚩';
+            } else {
+                cellDiv.classList.remove('flag');
+                cellDiv.textContent = '';
+            }
+        };
+
+        const initializeGame = () => {
+            gameOver = false;
+            board.innerHTML = '';
+
+            const cells = createBoard();
+            placeMines(cells);
+            calculateAdjacency(cells);
+
+            cells.forEach((row, i) => {
+                row.forEach((cell, j) => {
+                    const cellDiv = document.createElement('div');
+                    cellDiv.id = `cell-${i}-${j}`;
+                    cellDiv.className = 'cell';
+                    cellDiv.addEventListener('click', () => revealCell(cell, i, j, cells));
+                    cellDiv.addEventListener('contextmenu', (event) => toggleFlag(event, cell, i, j));
+                    board.appendChild(cellDiv);
+                });
+            });
+        };
+
+        restartBtn.addEventListener('click', initializeGame);
+
+        initializeGame();
+    </script>
+</body>
+</html>
